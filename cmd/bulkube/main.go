@@ -13,6 +13,8 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/printers"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
+
+	_ "k8s.io/apimachinery/pkg/runtime" // Needed for `go get` to function properly
 )
 
 var (
