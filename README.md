@@ -10,7 +10,7 @@ go install github.com/PeriscopeData/bulkube/...
 
 Running:
 ```
-$GOPATH/bin/bulkube [-l <labelSelector>] [-fmt] [-image <repo/name>] [-sha abc123]  <dir-or-file>
+$GOPATH/bin/bulkube [-l <labelSelector>] [-fmt] [-image <repo/name>] [-sha abc123] -path <dir-or-file>
 
   -fmt
     	Reformat even if version does not change.
@@ -20,4 +20,6 @@ $GOPATH/bin/bulkube [-l <labelSelector>] [-fmt] [-image <repo/name>] [-sha abc12
     	Filter deployments by label.
   -sha string
     	Set image version by sha.
+  -path string
+    	Path to modify files
 ```
