@@ -6,6 +6,11 @@ Installation:
 go get github.com/PeriscopeData/bulkube/... && \
 go install github.com/PeriscopeData/bulkube/...
 ```
+Note:
+Go's vendoring can cause weird reflection issues. If you cannot run the binary, try
+```
+rm -rf $GOPATH/src/k8s.io/vendor
+```
 
 
 Running:
