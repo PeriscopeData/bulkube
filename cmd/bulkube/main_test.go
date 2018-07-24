@@ -106,6 +106,7 @@ var _ = Context("Updates matching files", func() {
 	var (
 		tmpDir string
 		err    error
+		paths  []string
 	)
 
 	BeforeEach(func() {
@@ -115,6 +116,7 @@ var _ = Context("Updates matching files", func() {
 		}
 		ioutil.WriteFile(tmpDir+"/gopher_trainer.yaml", []byte(gopherTrainerYaml), 0755)
 		ioutil.WriteFile(tmpDir+"/snake_trainer.yaml", []byte(snakeTrainerYaml), 0755)
+		paths = []strinrg{tmpDir + "/gopher_trainer.yaml", tmpDir + "/snake_trainer.yaml"}
 	})
 
 	ExpectFileMatchesContent := func(filename, content string) {
@@ -124,7 +126,7 @@ var _ = Context("Updates matching files", func() {
 	}
 
 	It("Updates the version of matching containers", func() {
-		r := builder(tmpDir, "k8s-app=snake-trainer").Do()
+		r := builder(paths, "k8s-app=snake-trainer").Do()
 		updatedObjectMap, _ := updateMatchingObjects(r, "test-repo/training-sim", "abcdef")
 		writeObjectFiles(updatedObjectMap)
 		ExpectFileMatchesContent(tmpDir+"/snake_trainer.yaml", strings.Replace(snakeTrainerYaml, "ce9762ec9a423afd10ec4cdb929af496cfad1a875298ab86735ae791fe98cca6", "abcdef", -1))
@@ -132,7 +134,7 @@ var _ = Context("Updates matching files", func() {
 	})
 
 	It("Writes all objects in the file, even those skipped by the filter", func() {
-		r := builder(tmpDir, "k8s-app=snake-trainer,k8s-group=arena").Do()
+		r := builder(paths, "k8s-app=snake-trainer,k8s-group=arena").Do()
 		updatedObjectMap, _ := updateMatchingObjects(r, "test-repo/training-sim", "abcdef")
 		writeObjectFiles(updatedObjectMap)
 		ExpectFileMatchesContent(tmpDir+"/snake_trainer.yaml", strings.Replace(snakeTrainerYaml, "ce9762ec9a423afd10ec4cdb929af496cfad1a875298ab86735ae791fe98cca6", "abcdef", -1))
@@ -141,7 +143,7 @@ var _ = Context("Updates matching files", func() {
 
 	DescribeTable("builder()",
 		func(labelSelector string, expectedLength int) {
-			infos, err := builder(tmpDir, labelSelector).Do().Infos()
+			infos, err := builder([]string{tmpDir}, labelSelector).Do().Infos()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(infos).Should(HaveLen(expectedLength))
 		},
@@ -154,21 +156,21 @@ var _ = Context("Updates matching files", func() {
 
 	Describe("updateMatchingObject", func() {
 		It("Returns all files that have updated objects", func() {
-			r := builder(tmpDir, "").Do()
+			r := builder(paths, "").Do()
 			updatedObjectMap, _ := updateMatchingObjects(r, "test-repo/training-sim", "abcdef")
 			Expect(updatedObjectMap).Should(HaveKey(tmpDir + "/snake_trainer.yaml"))
 			Expect(updatedObjectMap).Should(HaveKey(tmpDir + "/gopher_trainer.yaml"))
 		})
 
 		It("Only returns files that have updated objects", func() {
-			r := builder(tmpDir, "").Do()
+			r := builder(paths, "").Do()
 			updatedObjectMap, _ := updateMatchingObjects(r, "test-repo/pit-guard", "abcdef")
 			Expect(updatedObjectMap).Should(HaveKey(tmpDir + "/snake_trainer.yaml"))
 			Expect(updatedObjectMap).ShouldNot(HaveKey(tmpDir + "/gopher_trainer.yaml"))
 		})
 
 		It("Returns all objects in files that have modified updated objects", func() {
-			r := builder(tmpDir, "").Do()
+			r := builder(paths, "").Do()
 			updatedObjectMap, _ := updateMatchingObjects(r, "test-repo/training-sim", "abcdef")
 			Expect(updatedObjectMap[tmpDir+"/snake_trainer.yaml"]).Should(HaveLen(3))
 			Expect(updatedObjectMap[tmpDir+"/gopher_trainer.yaml"]).Should(HaveLen(2))

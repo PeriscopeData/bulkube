@@ -7,21 +7,21 @@ import (
 	"os"
 	"strings"
 
+	_ "k8s.io/apimachinery/pkg/runtime" // Needed for `go get` to function properly
+
 	v1apps "k8s.io/api/apps/v1"
+	v1batch "k8s.io/api/batch/v1"
 	v1core "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/printers"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
 	"k8s.io/kubernetes/pkg/kubectl/scheme"
-
-	_ "k8s.io/apimachinery/pkg/runtime" // Needed for `go get` to function properly
 )
 
 var (
 	labelSelectorFlag string
 	imageNameFlag     string
 	imageShaFlag      string
-	pathFlag          string
 	reformatAll       bool
 	t                 interface{}
 )
@@ -30,7 +30,6 @@ func init() {
 	flag.StringVar(&labelSelectorFlag, "l", "", "Filter deployments by label.")
 	flag.StringVar(&imageNameFlag, "image", "", "Image to modify. Only modifies containers that match this image/repository. If @sha256: is included, will use that as sha.")
 	flag.StringVar(&imageShaFlag, "sha", "", "Set image version by sha.")
-	flag.StringVar(&pathFlag, "path", ".", "Path to operate in.")
 	flag.BoolVar(&reformatAll, "fmt", false, "Reformat even if version does not change.")
 }
 
@@ -43,12 +42,12 @@ func main() {
 		}
 	}
 
-	if (imageNameFlag == "" || imageShaFlag == "") && !reformatAll {
+	if flag.NArg() == 0 || ((imageNameFlag == "" || imageShaFlag == "") && !reformatAll) {
 		flag.Usage()
 		return
 	}
 
-	r := builder(pathFlag, labelSelectorFlag).Do()
+	r := builder(flag.Args(), labelSelectorFlag).Do()
 	if err := r.Err(); err != nil {
 		panic(err)
 	}
@@ -78,10 +77,15 @@ func updateMatchingObjects(r *resource.Result, imageName, imageSha string) (map[
 			if updateContainerImage(o.Spec.Template.Spec.Containers, imageName, imageSha) || reformatAll {
 				updatedFiles[info.Source] = t
 			}
+		case *v1batch.Job:
+			if updateContainerImage(o.Spec.Template.Spec.Containers, imageName, imageSha) || reformatAll {
+				updatedFiles[info.Source] = t
+			}
 		}
 		return nil
 	})
 	if err != nil {
+		panic(err)
 		return nil, err
 	}
 	modifiedObjectFiles := map[string][]*resource.Info{}
@@ -120,7 +124,7 @@ func writeObjectsToFile(updatedObjectList []*resource.Info, filename string) (er
 	)
 
 	// Read all objects to include filtered ones
-	if allObjects, err = builder(filename, "").Do().Infos(); err == nil {
+	if allObjects, err = builder([]string{filename}, "").Do().Infos(); err == nil {
 		// Merge new objects into full list
 		replaceUpdatedObjects(allObjects, updatedObjectList)
 		if configFile, err = os.OpenFile(filename, os.O_TRUNC|os.O_WRONLY, 0755); err == nil {
@@ -146,13 +150,16 @@ func updateContainerImage(containerList []v1core.Container, imageName, imageSha 
 	return
 }
 
-func builder(path, labelSelector string) *resource.Builder {
-	return resource.NewBuilder(genericclioptions.NewConfigFlags()).
-		WithScheme(scheme.Scheme, v1apps.SchemeGroupVersion, v1core.SchemeGroupVersion).
+func builder(paths []string, labelSelector string) *resource.Builder {
+	b := resource.NewBuilder(genericclioptions.NewConfigFlags()).
+		WithScheme(scheme.Scheme, v1apps.SchemeGroupVersion, v1core.SchemeGroupVersion, v1batch.SchemeGroupVersion).
 		LabelSelector(labelSelector).
 		NamespaceParam("default").DefaultNamespace().RequireNamespace().
 		ExportParam(true).
 		Local().
-		Path(true, path).
 		Flatten()
+	for _, path := range paths {
+		b = b.Path(true, path)
+	}
+	return b
 }
