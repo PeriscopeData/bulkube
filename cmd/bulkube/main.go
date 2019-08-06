@@ -73,6 +73,10 @@ func updateMatchingObjects(r *resource.Result, imageName, imageSha string) (map[
 		}
 		objectsByFile[info.Source] = append(objectsByFile[info.Source], info)
 		switch o := info.Object.(type) {
+		case *v1core.Pod:
+			if updateContainerImage(o.Spec.Containers, imageName, imageSha) || reformatAll {
+				updatedFiles[info.Source] = t
+			}
 		case *v1apps.Deployment:
 			if updateContainerImage(o.Spec.Template.Spec.Containers, imageName, imageSha) || reformatAll {
 				updatedFiles[info.Source] = t

@@ -17,6 +17,25 @@ func TestBulkUpdate(t *testing.T) {
 	RunSpecs(t, "BulkUpdate Suite")
 }
 
+const podTrainerYaml = `apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    k8s-app: pod-trainer
+  name: pod-trainer
+spec:
+  automountServiceAccountToken: false
+  containers:
+  - env:
+    - name: ECOSYSTEM_NAME
+      value: k8s.guardian.us-west-2.pdops.net
+    image: test-repo/training-sim@sha256:ce9762ec9a423afd10ec4cdb929af496cfad1a875298ab86735ae791fe98cca6
+    name: pod-trainer
+    resources: {}
+status: {}
+`
+
 const gopherTrainerYaml = `apiVersion: v1
 kind: Service
 metadata:
@@ -114,9 +133,10 @@ var _ = Context("Updates matching files", func() {
 		if err != nil {
 			panic(err)
 		}
+		ioutil.WriteFile(tmpDir+"/pod_trainer.yaml", []byte(podTrainerYaml), 0755)
 		ioutil.WriteFile(tmpDir+"/gopher_trainer.yaml", []byte(gopherTrainerYaml), 0755)
 		ioutil.WriteFile(tmpDir+"/snake_trainer.yaml", []byte(snakeTrainerYaml), 0755)
-		paths = []string{tmpDir + "/gopher_trainer.yaml", tmpDir + "/snake_trainer.yaml"}
+		paths = []string{tmpDir + "/gopher_trainer.yaml", tmpDir + "/snake_trainer.yaml", tmpDir + "/pod_trainer.yaml"}
 	})
 
 	ExpectFileMatchesContent := func(filename, content string) {
@@ -131,6 +151,13 @@ var _ = Context("Updates matching files", func() {
 		writeObjectFiles(updatedObjectMap)
 		ExpectFileMatchesContent(tmpDir+"/snake_trainer.yaml", strings.Replace(snakeTrainerYaml, "ce9762ec9a423afd10ec4cdb929af496cfad1a875298ab86735ae791fe98cca6", "abcdef", -1))
 		ExpectFileMatchesContent(tmpDir+"/gopher_trainer.yaml", gopherTrainerYaml)
+	})
+
+	It("Updates the version of matching containers in a pod", func() {
+		r := builder(paths, "k8s-app=pod-trainer").Do()
+		updatedObjectMap, _ := updateMatchingObjects(r, "test-repo/training-sim", "abcdef")
+		writeObjectFiles(updatedObjectMap)
+		ExpectFileMatchesContent(tmpDir+"/pod_trainer.yaml", strings.Replace(podTrainerYaml, "ce9762ec9a423afd10ec4cdb929af496cfad1a875298ab86735ae791fe98cca6", "abcdef", -1))
 	})
 
 	It("Writes all objects in the file, even those skipped by the filter", func() {
@@ -149,8 +176,9 @@ var _ = Context("Updates matching files", func() {
 		},
 		Entry("snake file", "k8s-app=snake-trainer", 3),
 		Entry("gopher file", "k8s-app=gopher-trainer", 2),
+		Entry("pod file", "k8s-app=pod-trainer", 1),
 		Entry("group", "k8s-group=arena", 2),
-		Entry("all", "", 5),
+		Entry("all", "", 6),
 		Entry("gopher arena", "k8s-group=arena,k8s-app=gopher-trainer", 1),
 	)
 
