@@ -130,7 +130,6 @@ func writeObjectsToFile(updatedObjectList []*resource.Info, filename string) (er
 		if configFile, err = os.OpenFile(filename, os.O_TRUNC|os.O_WRONLY, 0755); err == nil {
 			defer configFile.Close()
 			for _, info := range allObjects {
-				fmt.Fprintln(configFile, "---")
 				if err = printer.PrintObj(info.Object, configFile); err != nil {
 					return
 				}

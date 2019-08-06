@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 
 	"testing"
 )
@@ -16,8 +17,7 @@ func TestBulkUpdate(t *testing.T) {
 	RunSpecs(t, "BulkUpdate Suite")
 }
 
-const gopherTrainerYaml = `---
-apiVersion: v1
+const gopherTrainerYaml = `apiVersion: v1
 kind: Service
 metadata:
   name: gopher-trainer
@@ -53,8 +53,7 @@ spec:
           image: test-repo/training-sim@sha256:ce9762ec9a423afd10ec4cdb929af496cfad1a875298ab86735ae791fe98cca6
 `
 
-const snakeTrainerYaml = `---
-apiVersion: v1
+const snakeTrainerYaml = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   creationTimestamp: null
@@ -110,13 +109,14 @@ var _ = Context("Updates matching files", func() {
 	)
 
 	BeforeEach(func() {
+		format.TruncatedDiff = false
 		tmpDir, err = ioutil.TempDir("", "bulk_update_test")
 		if err != nil {
 			panic(err)
 		}
 		ioutil.WriteFile(tmpDir+"/gopher_trainer.yaml", []byte(gopherTrainerYaml), 0755)
 		ioutil.WriteFile(tmpDir+"/snake_trainer.yaml", []byte(snakeTrainerYaml), 0755)
-		paths = []strinrg{tmpDir + "/gopher_trainer.yaml", tmpDir + "/snake_trainer.yaml"}
+		paths = []string{tmpDir + "/gopher_trainer.yaml", tmpDir + "/snake_trainer.yaml"}
 	})
 
 	ExpectFileMatchesContent := func(filename, content string) {
