@@ -7,15 +7,15 @@ import (
 	"os"
 	"strings"
 
-	_ "k8s.io/apimachinery/pkg/runtime" // Needed for `go get` to function properly
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	v1apps "k8s.io/api/apps/v1"
 	v1batch "k8s.io/api/batch/v1"
 	v1core "k8s.io/api/core/v1"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/printers"
-	"k8s.io/kubernetes/pkg/kubectl/genericclioptions/resource"
-	"k8s.io/kubernetes/pkg/kubectl/scheme"
+
+	"k8s.io/client-go/kubernetes/scheme"
 )
 
 var (
@@ -151,7 +151,7 @@ func updateContainerImage(containerList []v1core.Container, imageName, imageSha 
 }
 
 func builder(paths []string, labelSelector string) *resource.Builder {
-	b := resource.NewBuilder(genericclioptions.NewConfigFlags()).
+	b := resource.NewBuilder(genericclioptions.NewConfigFlags(false)).
 		WithScheme(scheme.Scheme, v1apps.SchemeGroupVersion, v1core.SchemeGroupVersion, v1batch.SchemeGroupVersion).
 		LabelSelector(labelSelector).
 		NamespaceParam("default").DefaultNamespace().RequireNamespace().
